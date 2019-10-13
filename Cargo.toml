@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "netflow-fuzz",
+  "netflow",
+  "netflow-collector",
+]
