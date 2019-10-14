@@ -7,9 +7,13 @@
 
 use super::{Error, ERROR_INVALID_VERSION, ERROR_NOT_ENOUGH_DATA};
 
+pub mod raw;
+
 pub const ERROR_INVALID_FLOWSET_ID: Error = "Invalid flowset id";
 
-pub mod raw;
+pub const HEADER_LEN: usize = 24;
+pub const HEADER_VERSION: u16 = 9;
+pub const HEADER_VERSION_NETWORK_ORDER: u16 = HEADER_VERSION.to_be();
 
 #[cfg(test)]
 mod tests {

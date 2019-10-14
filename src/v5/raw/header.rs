@@ -8,9 +8,9 @@ pub struct Header<'a> {
 }
 
 impl<'a> Header<'a> {
-    pub const LEN: usize = 24;
-    pub const VERSION: u16 = 5;
-    pub const VERSION_NETWORK_ORDER: u16 = Self::VERSION.to_be();
+    pub const LEN: usize = super::super::HEADER_LEN;
+    pub const VERSION: u16 = super::super::HEADER_VERSION;
+    pub const VERSION_NETWORK_ORDER: u16 = super::super::HEADER_VERSION_NETWORK_ORDER;
 
     pub fn new(data: &'a [u8]) -> Result<Self, Error> {
         if data.len() < Self::LEN {

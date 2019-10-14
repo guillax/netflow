@@ -1,111 +1,14 @@
-use byteorder::{NetworkEndian, ReadBytesExt};
-use std::io::Cursor;
-
 use super::{Error, ERROR_INVALID_VERSION, ERROR_NOT_ENOUGH_DATA};
 
+pub mod parsed;
 pub mod raw;
 
-/// Based on https://www.ibm.com/support/knowledgecenter/SSCVHB_1.3.1/collector/cnpi_netflow_v5.html
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct PacketHeader {
-    /// NetFlow export format version number
-    pub version: u16,
-    /// Number of flows that are exported in this packet (1-30)
-    pub count: u16,
-    /// Current time in milliseconds since the export device started
-    pub sys_uptime_msecs: u32,
-    /// Current time in seconds since 0000 Coordinated Universal Time 1970
-    pub unix_secs: u32,
-    /// Residual nanoseconds since 0000 Coordinated Universal Time 1970
-    pub unix_nsecs: u32,
-    /// Sequence counter of total flows seen
-    pub sequence_number: u32,
-    /// Type of flow-switching engine
-    pub engine_type: u8,
-    /// Slot number of the flow-switching engine
-    pub engine_id: u8,
-    /// First two bits hold the sampling mode; remaining 14 bits hold value of sampling interval
-    pub sampling: u16,
-}
-
-impl PacketHeader {
-    pub fn parse(data: &[u8]) -> Result<(PacketHeader, &[u8]), Error> {
-        if data.len() < std::mem::size_of::<PacketHeader>() {
-            return Err(ERROR_NOT_ENOUGH_DATA);
-        }
-
-        let mut reader = Cursor::new(data);
-
-        Ok((
-            PacketHeader {
-                version: reader
-                    .read_u16::<NetworkEndian>()
-                    .map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                count: reader
-                    .read_u16::<NetworkEndian>()
-                    .map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                sys_uptime_msecs: reader
-                    .read_u32::<NetworkEndian>()
-                    .map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                unix_secs: reader
-                    .read_u32::<NetworkEndian>()
-                    .map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                unix_nsecs: reader
-                    .read_u32::<NetworkEndian>()
-                    .map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                sequence_number: reader
-                    .read_u32::<NetworkEndian>()
-                    .map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                engine_type: reader.read_u8().map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                engine_id: reader.read_u8().map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-                sampling: reader
-                    .read_u16::<NetworkEndian>()
-                    .map_err(|_| ERROR_NOT_ENOUGH_DATA)?,
-            },
-            &data[std::mem::size_of::<PacketHeader>()..],
-        ))
-    }
-}
+pub const HEADER_LEN: usize = 24;
+pub const HEADER_VERSION: u16 = 5;
+pub const HEADER_VERSION_NETWORK_ORDER: u16 = HEADER_VERSION.to_be();
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn packet_header_parsing_short() {
-        let data = &FLOW_PACKET_1[..std::mem::size_of::<PacketHeader>() - 1];
-
-        let res = PacketHeader::parse(data);
-        assert!(res.is_err());
-    }
-
-    #[test]
-    fn packet_header_parsing() {
-        let (header, _rest) = PacketHeader::parse(&FLOW_PACKET_1).unwrap();
-
-        println!("Version: {:?}", header.version);
-        println!("Count: {:?}", header.count);
-        println!("Uptime: {:?}", header.sys_uptime_msecs);
-        println!("Unix (s): {:?}", header.unix_secs);
-        println!("Unix (ns): {:?}", header.unix_nsecs);
-        println!("Sequence: {:?}", header.sequence_number);
-        println!("Engine type: {:?}", header.engine_type);
-        println!("Engine id: {:?}", header.engine_id);
-        println!("Sampling: {:?}", header.sampling);
-
-        assert_eq!(header.version, 5);
-        assert_eq!(header.count, 0x1d);
-        assert_eq!(header.sys_uptime_msecs, 51469784);
-        assert_eq!(header.unix_secs, 1544476581);
-        assert_eq!(header.unix_nsecs, 0);
-        assert_eq!(header.sequence_number, 873873830);
-        assert_eq!(header.engine_type, 0);
-        assert_eq!(header.engine_id, 0);
-        assert_eq!(header.sampling, 1000);
-    }
-
     pub const FLOW_PACKET_1: [u8; 1422] = [
         0x00, 0x05, 0x00, 0x1d, 0x03, 0x11, 0x5d, 0xd8, 0x5c, 0x0e, 0xd7, 0xa5, 0x00, 0x00, 0x00,
         0x00, 0x34, 0x16, 0x41, 0xa6, 0x00, 0x00, 0x03, 0xe8, 0x7d, 0xee, 0x2e, 0x30, 0x72, 0x17,
@@ -210,23 +113,3 @@ mod tests {
         &FLOW_PACKET_1[24..]
     }
 }
-
-/*
-var TestV5FlowPacket = []byte{}
-
-func TestV5HeaderDecode(t *testing.T) {
-  ip := net.ParseIP("114.23.3.231")
-  rawBody := TestV5FlowPacket
-  t.Log(fmt.Printf("Test Packet contains %v bytes\n", len(rawBody)))
-  d := NewDecoder(ip, rawBody)
-  if msg, err := d.Decode(); err != nil {
-    t.Error(fmt.Printf("expected a message but got an error: %v\n", err))
-  } else if msg == nil {
-    t.Error("Expected a message but got nothing")
-  } else {
-    buf := new(bytes.Buffer)
-    msg.JSONMarshal(buf)
-    t.Log(fmt.Printf("Got a message \n%v\n", buf.String()))
-  }
-}
-*/

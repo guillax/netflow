@@ -15,6 +15,33 @@ pub const ERROR_INVALID_VERSION: Error = "Invalid Netflow export format version 
 pub mod v5;
 pub mod v9;
 
+pub enum Version {
+    V5 = 5,
+    V9 = 9,
+}
+
+pub fn peek_version<'a>(data: &'a [u8]) -> Result<Version, Error> {
+    if data.len() < std::mem::size_of::<u16>() {
+        return Err(ERROR_NOT_ENOUGH_DATA);
+    }
+
+    let version: u16 = unsafe {
+        let mut version: u16 = 0;
+        std::ptr::copy_nonoverlapping(
+            data.as_ptr(),
+            &mut version as *mut u16 as *mut u8,
+            std::mem::size_of::<u16>(),
+        );
+        version
+    };
+
+    match version {
+        v5::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V5),
+        v9::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V9),
+        _ => Err(ERROR_INVALID_VERSION),
+    }
+}
+
 /// Say hello from netflow crate
 ///
 /// # Arguments
