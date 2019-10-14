@@ -1,0 +1,26 @@
+use super::{Error, ERROR_INVALID_FLOWSET_ID, ERROR_INVALID_VERSION, ERROR_NOT_ENOUGH_DATA};
+
+mod header;
+mod set;
+mod setheader;
+
+/*
+mod iterator;
+mod record;
+mod set;
+*/
+
+pub use header::Header;
+pub use set::Set;
+pub use setheader::SetHeader;
+
+/*
+pub use iterator::RecordIterator;
+pub use record::Record;
+pub use set::FlowSet;
+*/
+
+#[cfg(test)]
+mod tests {
+    pub use super::super::tests::{get_flow_packet_header, get_flow_packet_sets, FLOW_PACKET_1};
+}

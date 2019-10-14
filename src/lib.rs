@@ -2,9 +2,18 @@
 //!
 //! # Examples
 
+// https://netflow.caligare.com/netflow_v1.htm
+// http://www.ciscopress.com/articles/article.asp?p=2812391&seqNum=3
+
 extern crate byteorder;
 
+type Error = &'static str;
+
+pub const ERROR_NOT_ENOUGH_DATA: Error = "Not enough data";
+pub const ERROR_INVALID_VERSION: Error = "Invalid Netflow export format version number";
+
 pub mod v5;
+pub mod v9;
 
 /// Say hello from netflow crate
 ///
