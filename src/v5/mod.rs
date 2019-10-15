@@ -1,11 +1,16 @@
-use super::{Error, ERROR_INVALID_VERSION, ERROR_NOT_ENOUGH_DATA};
+use super::{
+    Endianness, Error, NativeEndian, NetworkEndian, ERROR_INVALID_VERSION, ERROR_NOT_ENOUGH_DATA,
+};
 
+pub mod generic;
 pub mod parsed;
 pub mod raw;
 
 pub const HEADER_LEN: usize = 24;
 pub const HEADER_VERSION: u16 = 5;
 pub const HEADER_VERSION_NETWORK_ORDER: u16 = HEADER_VERSION.to_be();
+
+pub use generic::*;
 
 #[cfg(test)]
 mod tests {

@@ -15,6 +15,25 @@ pub const ERROR_INVALID_VERSION: Error = "Invalid Netflow export format version 
 pub mod v5;
 pub mod v9;
 
+pub trait Endianness {
+    const REPR: u16;
+}
+
+pub enum BigEndian {}
+pub enum LittleEndian {}
+
+pub type NativeEndian = LittleEndian;
+pub type NetworkEndian = BigEndian;
+
+impl Endianness for BigEndian {
+    const REPR: u16 = 0x0001;
+}
+
+impl Endianness for LittleEndian {
+    const REPR: u16 = 0x0100;
+}
+
+#[derive(PartialEq)]
 pub enum Version {
     V5 = 5,
     V9 = 9,
