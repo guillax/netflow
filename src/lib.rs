@@ -5,33 +5,15 @@
 // https://netflow.caligare.com/netflow_v1.htm
 // http://www.ciscopress.com/articles/article.asp?p=2812391&seqNum=3
 
-extern crate byteorder;
-
 type Error = &'static str;
 
 pub const ERROR_NOT_ENOUGH_DATA: Error = "Not enough data";
 pub const ERROR_INVALID_VERSION: Error = "Invalid Netflow export format version number";
 
+mod endianness;
+mod utils;
 pub mod v5;
-pub mod v9;
-
-pub trait Endianness {
-    const REPR: u16;
-}
-
-pub enum BigEndian {}
-pub enum LittleEndian {}
-
-pub type NativeEndian = LittleEndian;
-pub type NetworkEndian = BigEndian;
-
-impl Endianness for BigEndian {
-    const REPR: u16 = 0x0001;
-}
-
-impl Endianness for LittleEndian {
-    const REPR: u16 = 0x0100;
-}
+// pub mod v9;
 
 #[derive(PartialEq)]
 pub enum Version {
@@ -55,8 +37,8 @@ pub fn peek_version<'a>(data: &'a [u8]) -> Result<Version, Error> {
     };
 
     match version {
-        v5::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V5),
-        v9::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V9),
+        v5::Header::VERSION_NETWORK_ORDER => Ok(Version::V5),
+        // v9::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V9),
         _ => Err(ERROR_INVALID_VERSION),
     }
 }

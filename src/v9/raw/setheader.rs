@@ -1,5 +1,4 @@
 use super::{Error, ERROR_NOT_ENOUGH_DATA};
-use byteorder::{ByteOrder, NetworkEndian};
 
 #[derive(PartialEq)]
 pub struct SetHeader<'a> {

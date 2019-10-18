@@ -1,5 +1,4 @@
 use super::{Error, ERROR_INVALID_VERSION, ERROR_NOT_ENOUGH_DATA};
-use byteorder::{ByteOrder, NetworkEndian};
 
 /// A Netflow v9 header helper struct
 #[derive(PartialEq)]

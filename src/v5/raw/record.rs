@@ -1,5 +1,4 @@
 use super::{Error, ERROR_NOT_ENOUGH_DATA};
-use byteorder::{ByteOrder, NetworkEndian};
 
 /// A Netflow v5 record helper struct
 #[derive(PartialEq)]

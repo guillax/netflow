@@ -1,5 +1,4 @@
 use super::{Error, SetHeader, ERROR_INVALID_FLOWSET_ID};
-use byteorder::{ByteOrder, NetworkEndian};
 
 #[derive(PartialEq, Debug)]
 pub enum Set<'a> {
