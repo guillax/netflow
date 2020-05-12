@@ -10,6 +10,6 @@ fn main() {
     }
 
     let flowset =
-        netflow::v5::FlowSet::parse(&received_packet).expect("Failed to instantiate FlowSet");
+        netflow::v5::FlowSet::from_bytes(&received_packet).expect("Failed to instantiate FlowSet");
     print!("{:?}", flowset);
 }

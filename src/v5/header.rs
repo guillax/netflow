@@ -1,100 +1,80 @@
 use std::fmt;
 
-use super::{Error, ERROR_INVALID_VERSION, ERROR_NOT_ENOUGH_DATA};
-
-use super::super::utils::read_unaligned;
+use crate::Error;
 use crate::convert;
 use crate::endianness::Endianness;
+use crate::utils::read_unaligned_unchecked;
 
+/// Netflow v5 header struct
 #[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
 pub struct Header {
-    sys_uptime_msecs: u32,
-    unix_secs: u32,
-    unix_nsecs: u32,
-    sequence_number: u32,
-    engine_type: u8,
-    engine_id: u8,
-    sampling: u16,
-    count: u16,
+    /// NetFlow export format version number
+    pub version: u16,
+    /// Number of flows that are exported in this packet (1-30)
+    pub count: u16,
+    /// Current time in milliseconds since the export device started
+    pub sys_uptime_msecs: u32,
+    /// Current time in seconds since 0000 Coordinated Universal Time 1970
+    pub unix_secs: u32,
+    /// Residual nanoseconds since 0000 Coordinated Universal Time 1970
+    pub unix_nsecs: u32,
+    /// Sequence counter of total flows seen
+    pub sequence_number: u32,
+    /// Type of flow-switching engine
+    pub engine_type: u8,
+    /// Slot number of the flow-switching engine
+    pub engine_id: u8,
+    /// First two bits hold the sampling mode; remaining 14 bits hold value of sampling interval
+    pub sampling: u16,
 }
 
 impl Header {
-    pub const LEN: usize = 24;
+    pub const LEN: usize = std::mem::size_of::<Self>();
     pub const VERSION: u16 = 5;
     pub const VERSION_NETWORK_ORDER: u16 = Self::VERSION.to_be();
 
     /// Parse a netflow v5 packet header
-    pub fn parse<'a>(data: &'a [u8]) -> Result<Self, Error> {
+    pub fn from_bytes<'a>(data: &'a [u8]) -> Result<Self, Error> {
         if data.len() < Self::LEN {
-            return Err(ERROR_NOT_ENOUGH_DATA);
+            return Err(Error::NotEnoughData{expected: Self::LEN, actual: data.len()});
         }
 
-        if read_unaligned::<u16>(data) != Self::VERSION_NETWORK_ORDER {
-            return Err(ERROR_INVALID_VERSION);
+        let version_be = read_unaligned_unchecked::<u16>(data);
+        if version_be != Self::VERSION_NETWORK_ORDER {
+            return Err(Error::InvalidVersion{
+                expected: vec!(Self::VERSION),
+                actual: convert!(version_be),
+            });
         }
 
         Ok(Self {
-            count: convert!(read_unaligned::<u16>(&data[2..4])),
-            sys_uptime_msecs: convert!(read_unaligned::<u32>(&data[4..8])),
-            unix_secs: convert!(read_unaligned::<u32>(&data[8..12])),
-            unix_nsecs: convert!(read_unaligned::<u32>(&data[12..16])),
-            sequence_number: convert!(read_unaligned::<u32>(&data[16..20])),
+            version: Self::VERSION,
+            count: convert!(read_unaligned_unchecked::<u16>(&data[2..4])),
+            sys_uptime_msecs: convert!(read_unaligned_unchecked::<u32>(&data[4..8])),
+            unix_secs: convert!(read_unaligned_unchecked::<u32>(&data[8..12])),
+            unix_nsecs: convert!(read_unaligned_unchecked::<u32>(&data[12..16])),
+            sequence_number: convert!(read_unaligned_unchecked::<u32>(&data[16..20])),
             engine_type: data[20],
             engine_id: data[21],
-            sampling: convert!(read_unaligned::<u16>(&data[22..24])),
+            sampling: convert!(read_unaligned_unchecked::<u16>(&data[22..24])),
         })
-    }
-
-    /// NetFlow export format version number
-    pub fn version(&self) -> u16 {
-        Self::VERSION
-    }
-
-    /// Number of flows that are exported in this packet (1-30)
-    pub fn count(&self) -> u16 {
-        self.count
-    }
-
-    /// Current time in milliseconds since the export device started
-    pub fn sys_uptime_msecs(&self) -> u32 {
-        self.sys_uptime_msecs
-    }
-
-    /// Current time in seconds since 0000 Coordinated Universal Time 1970
-    pub fn unix_secs(&self) -> u32 {
-        self.unix_secs
-    }
-
-    /// Residual nanoseconds since 0000 Coordinated Universal Time 1970
-    pub fn unix_nsecs(&self) -> u32 {
-        self.unix_nsecs
-    }
-
-    /// Sequence counter of total flows seen
-    pub fn sequence_number(&self) -> u32 {
-        self.sequence_number
-    }
-
-    /// Type of flow-switching engine
-    pub fn engine_type(&self) -> u8 {
-        self.engine_type
-    }
-
-    /// Slot number of the flow-switching engine
-    pub fn engine_id(&self) -> u8 {
-        self.engine_id
-    }
-
-    /// First two bits hold the sampling mode; remaining 14 bits hold value of sampling interval
-    pub fn sampling(&self) -> u16 {
-        self.sampling
     }
 }
 
 impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Header {{ version: {}, count: {}, sys_uptime_msecs: {}, unix_secs: {}, unix_nsecs: {}, sequence_number: {}, engine_type: {}, engine_id: {}, sampling: {} }}",
-        self.version(), self.count(), self.sys_uptime_msecs(), self.unix_secs(), self.unix_nsecs(), self.sequence_number(), self.engine_type(), self.engine_id(), self.sampling())
+        f.debug_struct("Header")
+            .field("version", &self.version)
+            .field("count", &self.count)
+            .field("sys_uptime_msecs", &self.sys_uptime_msecs)
+            .field("unix_secs", &self.unix_secs)
+            .field("unix_nsecs", &self.unix_nsecs)
+            .field("sequence_number", &self.sequence_number)
+            .field("engine_type", &self.engine_type)
+            .field("engine_id", &self.engine_id)
+            .field("sampling", &self.sampling)
+            .finish()
     }
 }
 
@@ -106,19 +86,20 @@ impl fmt::Debug for Header {
 
 #[cfg(test)]
 mod tests {
-    pub use super::super::tests::{get_flow_packet_header, get_flow_packet_records, FLOW_PACKET_1};
-    use super::*;
+    use super::super::test_data::get_flow_packet_header;
+    use super::Header;
+    use crate::Error;
 
     #[test]
     fn header_parse_should_succeed_with_valid_data() {
-        assert!(Header::parse(get_flow_packet_header()).is_ok());
+        assert!(Header::from_bytes(get_flow_packet_header()).is_ok());
     }
 
     #[test]
     fn header_parse_should_fail_with_not_enough_data() {
         assert_eq!(
-            Header::parse(&get_flow_packet_header()[..Header::LEN - 1]),
-            Err(ERROR_NOT_ENOUGH_DATA)
+            Header::from_bytes(&get_flow_packet_header()[..Header::LEN - 1]),
+            Err(Error::NotEnoughData{ expected: Header::LEN, actual: Header::LEN - 1})
         );
     }
 
@@ -130,29 +111,34 @@ mod tests {
             data
         };
 
-        let res = Header::parse(&data);
+        let res = Header::from_bytes(&data);
 
         assert!(res.is_err());
-        assert_eq!(res, Err(ERROR_INVALID_VERSION));
+        assert_eq!(res, Err(Error::InvalidVersion{expected: vec!(5), actual: 1}));
     }
 
     #[test]
     fn header_accessors_expose_fields() {
-        let header = Header::parse(get_flow_packet_header()).unwrap();
+        let header = Header::from_bytes(get_flow_packet_header()).unwrap();
 
-        assert_eq!(header.version(), 5);
-        assert_eq!(header.count(), 0x1d);
-        assert_eq!(header.sys_uptime_msecs(), 51469784);
-        assert_eq!(header.unix_secs(), 1544476581);
-        assert_eq!(header.unix_nsecs(), 0);
-        assert_eq!(header.sequence_number(), 873873830);
-        assert_eq!(header.engine_type(), 0);
-        assert_eq!(header.engine_id(), 0);
-        assert_eq!(header.sampling(), 1000);
+        assert_eq!(header.version, 5);
+        assert_eq!(header.count, 0x1d);
+        assert_eq!(header.sys_uptime_msecs, 51469784);
+        assert_eq!(header.unix_secs, 1544476581);
+        assert_eq!(header.unix_nsecs, 0);
+        assert_eq!(header.sequence_number, 873873830);
+        assert_eq!(header.engine_type, 0);
+        assert_eq!(header.engine_id, 0);
+        assert_eq!(header.sampling, 1000);
     }
 
     #[test]
     fn header_implements_debug() {
-        println!("{:?}", Header::parse(get_flow_packet_header()).unwrap());
+        println!("{:?}", Header::from_bytes(get_flow_packet_header()).unwrap());
+    }
+
+    #[test]
+    fn header_implements_display() {
+        println!("{}", Header::from_bytes(get_flow_packet_header()).unwrap());
     }
 }

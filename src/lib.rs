@@ -5,10 +5,11 @@
 // https://netflow.caligare.com/netflow_v1.htm
 // http://www.ciscopress.com/articles/article.asp?p=2812391&seqNum=3
 
-type Error = &'static str;
-
-pub const ERROR_NOT_ENOUGH_DATA: Error = "Not enough data";
-pub const ERROR_INVALID_VERSION: Error = "Invalid Netflow export format version number";
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    NotEnoughData { expected: usize, actual: usize },
+    InvalidVersion { expected: Vec<u16>, actual: u16 },
+}
 
 mod endianness;
 mod utils;
@@ -21,25 +22,25 @@ pub enum Version {
     V9 = 9,
 }
 
+use crate::endianness::Endianness;
+
 pub fn peek_version<'a>(data: &'a [u8]) -> Result<Version, Error> {
     if data.len() < std::mem::size_of::<u16>() {
-        return Err(ERROR_NOT_ENOUGH_DATA);
+        return Err(Error::NotEnoughData {
+            expected: std::mem::size_of::<u16>(),
+            actual: data.len(),
+        });
     }
 
-    let version: u16 = unsafe {
-        let mut version: u16 = 0;
-        std::ptr::copy_nonoverlapping(
-            data.as_ptr(),
-            &mut version as *mut u16 as *mut u8,
-            std::mem::size_of::<u16>(),
-        );
-        version
-    };
+    let version: u16 = utils::read_unaligned_unchecked(data);
 
     match version {
         v5::Header::VERSION_NETWORK_ORDER => Ok(Version::V5),
         // v9::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V9),
-        _ => Err(ERROR_INVALID_VERSION),
+        _ => Err(Error::InvalidVersion {
+            expected: vec![v5::Header::VERSION],
+            actual: convert!(version),
+        }),
     }
 }
 
@@ -78,12 +79,4 @@ pub fn peek_version<'a>(data: &'a [u8]) -> Result<Version, Error> {
 /// CPU.
 pub fn greetings() -> String {
     String::from("Hello from netflow-0.1.0")
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
 }
