@@ -1,9 +1,16 @@
-//! This is the documentation for `netflow`
-//!
-//! # Examples
-
-// https://netflow.caligare.com/netflow_v1.htm
+/// This is the documentation for `netflow`
 // http://www.ciscopress.com/articles/article.asp?p=2812391&seqNum=3
+mod endianness;
+mod utils;
+
+#[cfg(feature = "ipfix")]
+pub mod ipfix;
+#[cfg(feature = "netflow-v5")]
+pub mod v5;
+#[cfg(feature = "netflow-v7")]
+pub mod v7;
+#[cfg(feature = "netflow-v9")]
+pub mod v9;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -11,15 +18,12 @@ pub enum Error {
     InvalidVersion { expected: Vec<u16>, actual: u16 },
 }
 
-mod endianness;
-mod utils;
-pub mod v5;
-// pub mod v9;
-
 #[derive(PartialEq)]
 pub enum Version {
     V5 = 5,
+    V7 = 7,
     V9 = 9,
+    Ipfix = 10,
 }
 
 use crate::endianness::Endianness;
@@ -35,48 +39,26 @@ pub fn peek_version<'a>(data: &'a [u8]) -> Result<Version, Error> {
     let version: u16 = utils::read_unaligned_unchecked(data);
 
     match version {
+        #[cfg(feature = "netflow-v5")]
         v5::Header::VERSION_NETWORK_ORDER => Ok(Version::V5),
-        // v9::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V9),
+        #[cfg(feature = "netflow-v7")]
+        v7::Header::VERSION_NETWORK_ORDER => Ok(Version::V7),
+        #[cfg(feature = "netflow-v9")]
+        v9::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V9),
+        #[cfg(feature = "ipfix")]
+        ipfix::Header::VERSION_NETWORK_ORDER => Ok(Version::Ipfix),
         _ => Err(Error::InvalidVersion {
-            expected: vec![v5::Header::VERSION],
+            expected: vec![
+                #[cfg(feature = "netflow-v5")]
+                v5::Header::VERSION,
+                #[cfg(feature = "netflow-v7")]
+                v7::Header::VERSION,
+                #[cfg(feature = "netflow-v9")]
+                v9::Header::VERSION,
+                #[cfg(feature = "ipfix")]
+                ipfix::Header::VERSION,
+            ],
             actual: convert!(version),
         }),
     }
-}
-
-/// Say hello from netflow crate
-///
-/// # Arguments
-///
-/// * `identifier` - A 6 byte vec that provides some arbitrary identification.
-///
-/// # Remarks
-///
-/// This is a convenience function that converts the `identifier` `vec` into
-/// a 6 byte array. Where possible, prefer the array and use `new`.
-///
-/// # Examples
-///
-/// None yet
-///
-/// # Panics
-///
-/// Never
-///
-/// # Errors
-///
-/// None
-///
-/// # Safety
-///
-/// Don't even care
-///
-/// # Garbage
-///
-/// Done
-///
-/// *Note*: This also assumes the `flaker` is being created on a little endian
-/// CPU.
-pub fn greetings() -> String {
-    String::from("Hello from netflow-0.1.0")
 }

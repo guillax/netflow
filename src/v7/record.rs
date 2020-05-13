@@ -6,7 +6,7 @@ use crate::endianness::Endianness;
 use crate::utils::read_unaligned_unchecked;
 use crate::Error;
 
-/// Netflow v5 record struct
+/// Netflow v7 record struct
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub struct Record {
@@ -47,13 +47,16 @@ pub struct Record {
     pub source_mask: u8,
     /// Destination address prefix mask bits
     pub destination_mask: u8,
-    padding_1: u16,
+    /// Flags indicating, among other things, what flows are invalid
+    pub flags: u16,
+    /// IP address of the router that is bypassed by the Catalyst 5000 series switch.
+    pub source_router: Ipv4Addr,
 }
 
 impl Record {
     pub const LEN: usize = std::mem::size_of::<Self>();
 
-    /// Parse a netflow v5 packet record
+    /// Parse a netflow v7 packet record
     pub fn from_bytes<'a>(data: &'a [u8]) -> Result<Self, Error> {
         if data.len() < Self::LEN {
             return Err(Error::NotEnoughData {
@@ -82,7 +85,8 @@ impl Record {
             destination_as: convert!(read_unaligned_unchecked::<u16>(&data[42..44])),
             source_mask: data[44],
             destination_mask: data[45],
-            padding_1: 0, // read_unaligned_unchecked::<u16>(&data[36])
+            flags: convert!(read_unaligned_unchecked::<u16>(&data[46..48])),
+            source_router: Ipv4Addr::new(data[48], data[49], data[50], data[51]),
         })
     }
 }
@@ -108,6 +112,8 @@ impl fmt::Display for Record {
             .field("destination_as", &self.destination_as)
             .field("source_mask", &self.source_mask)
             .field("destination_mask", &self.destination_mask)
+            .field("flags", &self.flags)
+            .field("source_router", &self.source_router)
             .finish()
     }
 }
@@ -168,6 +174,11 @@ mod tests {
         assert_eq!(record.destination_as, 56030);
         assert_eq!(record.source_mask, 20);
         assert_eq!(record.destination_mask, 22);
+        assert_eq!(record.flags, 0);
+        assert_eq!(
+            record.source_router,
+            std::net::Ipv4Addr::new(114, 23, 3, 231)
+        );
     }
 
     #[test]

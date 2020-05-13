@@ -1,4 +1,4 @@
-// https://netflow.caligare.com/netflow_v5.htm
+// https://netflow.caligare.com/netflow_v7.htm
 
 mod header;
 mod record;

@@ -5,7 +5,7 @@ use crate::endianness::Endianness;
 use crate::utils::read_unaligned_unchecked;
 use crate::Error;
 
-/// Netflow v5 header struct
+/// Netflow v7 header struct
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub struct Header {
@@ -21,20 +21,15 @@ pub struct Header {
     pub unix_nsecs: u32,
     /// Sequence counter of total flows seen
     pub sequence_number: u32,
-    /// Type of flow-switching engine
-    pub engine_type: u8,
-    /// Slot number of the flow-switching engine
-    pub engine_id: u8,
-    /// First two bits hold the sampling mode; remaining 14 bits hold value of sampling interval
-    pub sampling: u16,
+    reserved: u32,
 }
 
 impl Header {
     pub const LEN: usize = std::mem::size_of::<Self>();
-    pub const VERSION: u16 = 5;
+    pub const VERSION: u16 = 7;
     pub const VERSION_NETWORK_ORDER: u16 = Self::VERSION.to_be();
 
-    /// Parse a netflow v5 packet header
+    /// Parse a netflow v7 packet header
     pub fn from_bytes<'a>(data: &'a [u8]) -> Result<Self, Error> {
         if data.len() < Self::LEN {
             return Err(Error::NotEnoughData {
@@ -58,9 +53,7 @@ impl Header {
             unix_secs: convert!(read_unaligned_unchecked::<u32>(&data[8..12])),
             unix_nsecs: convert!(read_unaligned_unchecked::<u32>(&data[12..16])),
             sequence_number: convert!(read_unaligned_unchecked::<u32>(&data[16..20])),
-            engine_type: data[20],
-            engine_id: data[21],
-            sampling: convert!(read_unaligned_unchecked::<u16>(&data[22..24])),
+            reserved: 0, // read_unaligned_unchecked::<u32>(&data[20..23])
         })
     }
 }
@@ -74,9 +67,6 @@ impl fmt::Display for Header {
             .field("unix_secs", &self.unix_secs)
             .field("unix_nsecs", &self.unix_nsecs)
             .field("sequence_number", &self.sequence_number)
-            .field("engine_type", &self.engine_type)
-            .field("engine_id", &self.engine_id)
-            .field("sampling", &self.sampling)
             .finish()
     }
 }
@@ -123,7 +113,7 @@ mod tests {
         assert_eq!(
             res,
             Err(Error::InvalidVersion {
-                expected: vec!(5),
+                expected: vec!(7),
                 actual: 1
             })
         );
@@ -133,15 +123,12 @@ mod tests {
     fn header_accessors_expose_fields() {
         let header = Header::from_bytes(get_flow_packet_header()).unwrap();
 
-        assert_eq!(header.version, 5);
+        assert_eq!(header.version, 7);
         assert_eq!(header.count, 0x1d);
         assert_eq!(header.sys_uptime_msecs, 51469784);
         assert_eq!(header.unix_secs, 1544476581);
         assert_eq!(header.unix_nsecs, 0);
         assert_eq!(header.sequence_number, 873873830);
-        assert_eq!(header.engine_type, 0);
-        assert_eq!(header.engine_id, 0);
-        assert_eq!(header.sampling, 1000);
     }
 
     #[test]

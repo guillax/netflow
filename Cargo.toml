@@ -8,4 +8,12 @@ readme = "README.md"
 license-file = "LICENSE.md"
 edition = "2018"
 
+[features]
+default = [ "netflow-v5", "netflow-v7" ]
+
+netflow-v5 = []
+netflow-v7 = []
+netflow-v9 = []
+ipfix = []
+
 [dependencies]
