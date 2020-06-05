@@ -44,7 +44,7 @@ pub fn peek_version<'a>(data: &'a [u8]) -> Result<Version, Error> {
         #[cfg(feature = "netflow-v7")]
         v7::Header::VERSION_NETWORK_ORDER => Ok(Version::V7),
         #[cfg(feature = "netflow-v9")]
-        v9::HEADER_VERSION_NETWORK_ORDER => Ok(Version::V9),
+        v9::Header::VERSION_NETWORK_ORDER => Ok(Version::V9),
         #[cfg(feature = "ipfix")]
         ipfix::Header::VERSION_NETWORK_ORDER => Ok(Version::Ipfix),
         _ => Err(Error::InvalidVersion {

@@ -6,5 +6,12 @@
 // https://www.plixer.com/blog/netflow-v9-overview-whats-in-the-netflow-packet-header/
 // https://netflow.caligare.com/netflow_v9.htm
 
+mod header;
+mod packet;
+mod set;
+
+pub use header::Header;
+pub use set::{DataFlowSet, FlowSet, FlowSetHeader, OptionFlowSet, TemplateFlowSet};
+
 #[cfg(test)]
 pub mod test_data;

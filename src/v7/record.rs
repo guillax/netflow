@@ -177,7 +177,7 @@ mod tests {
         assert_eq!(record.flags, 0);
         assert_eq!(
             record.source_router,
-            std::net::Ipv4Addr::new(114, 23, 3, 231)
+            std::net::Ipv4Addr::new(125, 238, 46, 48)
         );
     }
 
